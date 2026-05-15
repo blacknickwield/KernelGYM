@@ -1360,7 +1360,8 @@ async def main():
 
     # Auto-detect KGym port from .env if --kgym-url not explicitly set
     kgym_url = args.kgym_url
-    if kgym_url == "http://localhost:10907":  # still at default
+    # if kgym_url == "http://localhost:10907":  # still at default
+    if kgym_url:
         script_dir = Path(__file__).resolve().parent.parent
         env_file = script_dir / ".env"
         if env_file.exists():
@@ -1377,8 +1378,8 @@ async def main():
     # This is equivalent to:
     #   curl http://localhost:<port>/health
     #   curl http://localhost:<port>/workers/status
-    if not await check_kernelgym_status(kgym_url):
-        sys.exit(1)
+    # if not await check_kernelgym_status(kgym_url):
+    #     sys.exit(1)
     
     strategy = args.strategy
     if args.custom_strategy:
