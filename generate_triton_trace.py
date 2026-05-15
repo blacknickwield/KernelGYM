@@ -1235,6 +1235,52 @@ async def run_pipeline(config: PipelineConfig):
     print(f"  Output:                {config.output_dir}")
 
 
+async def check_kernelgym_status(kgym_url: str, timeout: float = 5.0) -> bool:
+    """Check whether KernelGYM API server and workers are reachable.
+
+    Equivalent to:
+      curl {kgym_url}/health
+      curl {kgym_url}/workers/status
+    """
+    base_url = kgym_url.rstrip("/")
+    endpoints = [
+        ("health", "/health"),
+        ("workers/status", "/workers/status"),
+    ]
+
+    print(f"[kgym] Checking KernelGYM at {base_url}")
+    ok = True
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        for name, path in endpoints:
+            url = f"{base_url}{path}"
+            try:
+                resp = await client.get(url)
+                resp.raise_for_status()
+                print(f"[kgym] GET {path}: OK (status={resp.status_code})")
+
+                # Print a compact preview so users can see worker readiness details.
+                try:
+                    body = resp.json()
+                    preview = json.dumps(body, ensure_ascii=False, indent=2)
+                except Exception:
+                    preview = resp.text
+
+                preview = (preview or "").strip()
+                if preview:
+                    if len(preview) > 2000:
+                        preview = preview[:2000] + "\n... <truncated>"
+                    print(preview)
+            except Exception as e:
+                ok = False
+                print(f"[kgym] GET {path}: FAILED ({type(e).__name__}: {e})")
+
+    if ok:
+        print("[kgym] KernelGYM health check passed.\n")
+    else:
+        print("[kgym] KernelGYM health check failed. Start KernelGYM server/workers first.\n")
+    return ok
+
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -1327,6 +1373,13 @@ async def main():
                         print(f"[auto] Detected API_PORT={port} from .env, using {kgym_url}")
                         break
 
+    # Check KernelGYM immediately after resolving the port.
+    # This is equivalent to:
+    #   curl http://localhost:<port>/health
+    #   curl http://localhost:<port>/workers/status
+    if not await check_kernelgym_status(kgym_url):
+        sys.exit(1)
+    
     strategy = args.strategy
     if args.custom_strategy:
         strategy = "custom"
