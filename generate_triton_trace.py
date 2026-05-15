@@ -159,7 +159,8 @@ class AsyncLLMClient:
                     model=config.llm_model,
                     messages=[{"role": "user", "content": prompt}],
                     temperature=config.llm_temperature,
-                    max_tokens=config.llm_max_tokens,
+                    # max_tokens=config.llm_max_tokens,
+                    max_completion_tokens=config.llm_max_tokens
                 )
 
                 choice = resp.choices[0] if resp.choices else None
